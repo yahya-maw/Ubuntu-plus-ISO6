@@ -1,0 +1,43 @@
+name: Ultimate Stable Build
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧹 Free Space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          sudo docker image prune -a -f
+          sudo apt-get clean
+
+      - name: 🛠️ Tools
+        run: sudo apt-get update && sudo apt-get install -y xorriso squashfs-tools wget curl p7zip-full
+
+      - name: 💿 Download & Extract
+        run: |
+          # تحميل برابط Mirror سريع جداً
+          curl -L -o base.iso https://mirrors.kernel.org/ubuntu-releases/24.04/ubuntu-24.04-desktop-amd64.iso
+          mkdir -p x
+          7z x base.iso -ox/ || true
+          rm base.iso
+          sudo chmod -R 777 x/
+
+      - name: 🏗️ Execute Build
+        run: |
+          chmod +x build.sh
+          sudo -E DEBIAN_FRONTEND=noninteractive ./build.sh || true
+
+      - name: 📦 Pack ISO
+        run: |
+          sudo xorriso -as mkisofs -r -V "Ubuntu-Plus-Final" -o Ubuntu-Plus-Final.iso x/
+
+      - name: 📤 Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ubuntu-Plus-ISO
+          path: Ubuntu-Plus-Final.iso
+          retention-days: 90
